@@ -4,7 +4,7 @@ A simple beginner-friendly Java desktop application for tracking personal expens
 
 ## Features
 
-- Add an expense with date, category, description, and amount
+- Add an expense with a calendar-selected date, category, description, and amount
 - View all expenses in a table
 - Delete a selected expense
 - Refresh the table
@@ -41,7 +41,7 @@ A simple beginner-friendly Java desktop application for tracking personal expens
 ## Class Explanation
 
 ### Expense
-Stores one expense and validates its fields such as date, category, description, and amount.
+Stores one expense and validates its fields such as date, category, description, and amount. Dates are represented as `LocalDate`; existing `day/month/year` expense files remain supported.
 
 ### InvalidExpenseException
 A custom exception used when the user enters invalid data.

@@ -1,10 +1,19 @@
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.Window;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -13,6 +22,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 
 public class ExpenseGUI extends JFrame {
@@ -57,6 +67,30 @@ public class ExpenseGUI extends JFrame {
 
         JLabel dateLabel = new JLabel("Date:", SwingConstants.RIGHT);
         JTextField dateField = new JTextField();
+        dateField.setEditable(false);
+        dateField.setToolTipText("Click to choose an expense date");
+        JButton datePickerButton = new JButton("Choose");
+        JPanel datePanel = new JPanel(new BorderLayout(5, 0));
+        datePanel.add(dateField, BorderLayout.CENTER);
+        datePanel.add(datePickerButton, BorderLayout.EAST);
+
+        Runnable openDatePicker = () -> {
+            LocalDate initialDate = LocalDate.now();
+            if (!dateField.getText().isEmpty()) {
+                initialDate = LocalDate.parse(dateField.getText(), DateTimeFormatter.ofPattern("dd/MM/uuuu"));
+            }
+            LocalDate selectedDate = DatePickerDialog.showDialog(this, initialDate);
+            if (selectedDate != null) {
+                dateField.setText(selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/uuuu")));
+            }
+        };
+        dateField.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent event) {
+                openDatePicker.run();
+            }
+        });
+        datePickerButton.addActionListener(event -> openDatePicker.run());
 
         JLabel categoryLabel = new JLabel("Category:", SwingConstants.RIGHT);
         JComboBox<String> categoryCombo = new JComboBox<>(Expense.getCategories());
@@ -71,7 +105,7 @@ public class ExpenseGUI extends JFrame {
         JButton clearButton = new JButton("Clear");
 
         panel.add(dateLabel);
-        panel.add(dateField);
+        panel.add(datePanel);
         panel.add(categoryLabel);
         panel.add(categoryCombo);
         panel.add(descriptionLabel);
@@ -85,7 +119,10 @@ public class ExpenseGUI extends JFrame {
 
         addButton.addActionListener(e -> {
             try {
-                String date = dateField.getText().trim();
+                if (dateField.getText().isEmpty()) {
+                    throw new InvalidExpenseException("Please select an expense date.");
+                }
+                LocalDate date = LocalDate.parse(dateField.getText(), DateTimeFormatter.ofPattern("dd/MM/uuuu"));
                 String category = (String) categoryCombo.getSelectedItem();
                 String description = descriptionField.getText().trim();
                 double amount = Double.parseDouble(amountField.getText().trim());
@@ -96,6 +133,8 @@ public class ExpenseGUI extends JFrame {
                 refreshTable(expenseManager.getExpenses());
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Please enter a valid amount.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            } catch (java.time.format.DateTimeParseException ex) {
+                JOptionPane.showMessageDialog(this, "Please select a valid date.", "Input Error", JOptionPane.ERROR_MESSAGE);
             } catch (InvalidExpenseException ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Invalid Expense", JOptionPane.ERROR_MESSAGE);
             }
@@ -180,7 +219,7 @@ public class ExpenseGUI extends JFrame {
 
         for (Expense expense : expenses) {
             tableModel.addRow(new Object[]{
-                expense.getDate(),
+                expense.getDate().format(DateTimeFormatter.ofPattern("dd/MM/uuuu")),
                 expense.getCategory(),
                 expense.getDescription(),
                 String.format("%.2f", expense.getAmount())
@@ -207,5 +246,91 @@ public class ExpenseGUI extends JFrame {
         dateField.setText("");
         descriptionField.setText("");
         amountField.setText("");
+    }
+
+    private static class DatePickerDialog extends JDialog {
+        private LocalDate selectedDate;
+        private YearMonth displayedMonth;
+        private final JLabel monthLabel;
+        private final JPanel calendarPanel;
+
+        private DatePickerDialog(Window owner, LocalDate initialDate) {
+            super(owner, "Select Expense Date", ModalityType.APPLICATION_MODAL);
+            displayedMonth = YearMonth.from(initialDate);
+            monthLabel = new JLabel("", SwingConstants.CENTER);
+            calendarPanel = new JPanel(new GridLayout(0, 7, 4, 4));
+
+            JPanel navigationPanel = new JPanel(new BorderLayout(8, 0));
+            JButton previousButton = new JButton("<");
+            JButton nextButton = new JButton(">");
+            previousButton.setToolTipText("Previous month");
+            nextButton.setToolTipText("Next month");
+            previousButton.addActionListener(event -> {
+                displayedMonth = displayedMonth.minusMonths(1);
+                updateCalendar();
+            });
+            nextButton.addActionListener(event -> {
+                displayedMonth = displayedMonth.plusMonths(1);
+                updateCalendar();
+            });
+            navigationPanel.add(previousButton, BorderLayout.WEST);
+            navigationPanel.add(monthLabel, BorderLayout.CENTER);
+            navigationPanel.add(nextButton, BorderLayout.EAST);
+
+            JButton cancelButton = new JButton("Cancel");
+            cancelButton.addActionListener(event -> dispose());
+            JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            footerPanel.add(cancelButton);
+
+            JPanel contentPanel = new JPanel(new BorderLayout(8, 8));
+            contentPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            contentPanel.add(navigationPanel, BorderLayout.NORTH);
+            contentPanel.add(calendarPanel, BorderLayout.CENTER);
+            contentPanel.add(footerPanel, BorderLayout.SOUTH);
+            setContentPane(contentPanel);
+            setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+            updateCalendar();
+            pack();
+            setResizable(false);
+            setLocationRelativeTo(owner);
+        }
+
+        private static LocalDate showDialog(Component parent, LocalDate initialDate) {
+            Window owner = SwingUtilities.getWindowAncestor(parent);
+            DatePickerDialog dialog = new DatePickerDialog(owner, initialDate);
+            dialog.setVisible(true);
+            return dialog.selectedDate;
+        }
+
+        private void updateCalendar() {
+            monthLabel.setText(displayedMonth.getMonth().getDisplayName(TextStyle.FULL, Locale.getDefault())
+                    + " " + displayedMonth.getYear());
+            calendarPanel.removeAll();
+
+            for (DayOfWeek day : DayOfWeek.values()) {
+                String dayName = day.getDisplayName(TextStyle.SHORT, Locale.getDefault());
+                calendarPanel.add(new JLabel(dayName, SwingConstants.CENTER));
+            }
+
+            LocalDate firstDay = displayedMonth.atDay(1);
+            int leadingDays = firstDay.getDayOfWeek().getValue() - 1;
+            for (int i = 0; i < leadingDays; i++) {
+                calendarPanel.add(new JLabel(""));
+            }
+
+            for (int day = 1; day <= displayedMonth.lengthOfMonth(); day++) {
+                LocalDate date = displayedMonth.atDay(day);
+                JButton dayButton = new JButton(Integer.toString(day));
+                dayButton.addActionListener(event -> {
+                    selectedDate = date;
+                    dispose();
+                });
+                calendarPanel.add(dayButton);
+            }
+
+            calendarPanel.revalidate();
+            calendarPanel.repaint();
+            pack();
+        }
     }
 }

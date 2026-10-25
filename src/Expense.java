@@ -1,6 +1,13 @@
 import java.util.Arrays;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 
 public class Expense {
+    private static final DateTimeFormatter FILE_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("d/M/uuuu").withResolverStyle(ResolverStyle.STRICT);
+
     public static final String[] VALID_CATEGORIES = {
         "Food",
         "Transport",
@@ -10,12 +17,12 @@ public class Expense {
         "Other"
     };
 
-    private String date;
+    private LocalDate date;
     private String category;
     private String description;
     private double amount;
 
-    public Expense(String date, String category, String description, double amount) throws InvalidExpenseException {
+    public Expense(LocalDate date, String category, String description, double amount) throws InvalidExpenseException {
         setDate(date);
         setCategory(category);
         setDescription(description);
@@ -43,10 +50,21 @@ public class Expense {
             throw new InvalidExpenseException("Invalid expense format in file.");
         }
 
-        String date = parts[0].trim();
+        LocalDate date;
         String category = parts[1].trim();
         String description = parts[2].trim();
         double amount;
+
+        try {
+            String dateText = parts[0].trim();
+            try {
+                date = LocalDate.parse(dateText, FILE_DATE_FORMAT);
+            } catch (DateTimeParseException e) {
+                date = LocalDate.parse(dateText, DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+        } catch (DateTimeParseException e) {
+            throw new InvalidExpenseException("Invalid date in file. Use day/month/year format.");
+        }
 
         try {
             amount = Double.parseDouble(parts[3].trim());
@@ -58,18 +76,18 @@ public class Expense {
     }
 
     public String toFileLine() {
-        return date + "|" + category + "|" + description + "|" + amount;
+        return date.format(FILE_DATE_FORMAT) + "|" + category + "|" + description + "|" + amount;
     }
 
-    public String getDate() {
+    public LocalDate getDate() {
         return date;
     }
 
-    public void setDate(String date) throws InvalidExpenseException {
-        if (date == null || date.trim().isEmpty()) {
-            throw new InvalidExpenseException("Date cannot be empty.");
+    public void setDate(LocalDate date) throws InvalidExpenseException {
+        if (date == null) {
+            throw new InvalidExpenseException("Please select a valid date.");
         }
-        this.date = date.trim();
+        this.date = date;
     }
 
     public String getCategory() {
@@ -115,6 +133,6 @@ public class Expense {
 
     @Override
     public String toString() {
-        return date + " | " + category + " | " + description + " | " + amount;
+        return date.format(FILE_DATE_FORMAT) + " | " + category + " | " + description + " | " + amount;
     }
 }

@@ -9,9 +9,5 @@ public class Main {
     }
 }
 
-// Open PowerShell
-
-// Run:
-// cd "D:\CODE\JAVA\PersonalExpenseTracker"
-// & "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin\javac.exe" .\src*.java -d .\out
-// & "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin\java.exe" -cp .\out Main
+ // Run:
+//   d:; cd 'd:\CODE\JAVA\PersonalExpenseTracker'; & 'C:\Users\Dharm Maniya\.vscode\extensions\redhat.java-1.58.0-win32-x64\jre\25.0.4.1-win32-x86_64\bin\java.exe' '-XX:+ShowCodeDetailsInExceptionMessages' '-cp' 'C:\Users\Dharm Maniya\AppData\Roaming\Code\User\workspaceStorage\b45b7867cace60053edd0443335d5973\redhat.java\jdt_ws\PersonalExpenseTracker_3ea9ea24\bin' 'Main'
